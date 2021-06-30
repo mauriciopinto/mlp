@@ -6,8 +6,8 @@ int main () {
 	dataset x_ds = create_dataset (0, 10, 3, 100);
 	classes y_ds = create_classes (0, 4, 100);
 
-	//print_dataset ("X_DS", x_ds, 3, 100);
-	//print_classes ("Y_DS", y_ds, 100);
+	print_dataset ("X_DS", x_ds, 3, 100);
+	print_classes ("Y_DS", y_ds, 100);
 
 	int n_layers = 4;
 

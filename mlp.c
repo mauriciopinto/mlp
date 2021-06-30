@@ -125,16 +125,17 @@ void backpropagation (Mlp *network, double learning_rate) {
 /* Trains the model 'network' by backpropagating it 'epochs'
  * times.  */
 void train (Mlp *network, int epochs, double learning_rate, 
-				dataset x) {
+				dataset x, classes y, int n) {
 	for (int i = 0; i < epochs; ++i) {
 		backpropagation (network, learning_rate);
-		double prediction = predict (network, x);
-		printf ("Epoch %d: error=%f\n", i, prediction);
+		classes y_pd = predict (network, x);
+		double error = network->error (y_pd, y, n);
+		printf ("Epoch %d: error=%f\n", i, error);
 	}
 }
 
 
-double predict (Mlp *network, dataset x) {
+classes predict (Mlp *network, dataset x) {
 	return 0;
 }
 

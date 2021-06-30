@@ -39,9 +39,9 @@ classes create_classes (int, int, int);
 
 void backpropagation (Mlp *, double);
 
-void train (Mlp *, int, double, dataset);
+void train (Mlp *, int, double, dataset, classes, int);
 
-double predict (Mlp *, dataset);
+classes predict (Mlp *, dataset);
 
 double mse (classes, classes, int);
 
