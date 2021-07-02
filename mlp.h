@@ -45,11 +45,21 @@ classes predict (Mlp *, dataset);
 
 double mse (classes, classes, int);
 
+double crossentropy (classes, classes, int);
+
 double *mse_grad (double *, int);
 
 double relu (double);
 
 double relu_grad (double);
+
+double sigmoid (double);
+
+double sigmoid_grad (double);
+
+double tanh (double);
+
+double tanh_grad (double);
 
 double **calculate_weights (double **);
 
