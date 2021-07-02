@@ -1,4 +1,5 @@
 #include "mlp.h"
+#include <math.h>
 
 /* Create a layer that receives 'n_input' values and returns
  * 'n_output' values after wieghting and activating them
@@ -68,7 +69,7 @@ classes create_classes (int low, int high, int n) {
 }
 
 
-/* Calculates the values of the weights of each layer int
+/* Calculates the values of the weights of each layer in
  * 'network' by back-propagating them starting from the 
  * output layer. */
 void backpropagation (Mlp *network, double learning_rate) {
@@ -128,15 +129,25 @@ void train (Mlp *network, int epochs, double learning_rate,
 				dataset x, classes y, int n) {
 	for (int i = 0; i < epochs; ++i) {
 		backpropagation (network, learning_rate);
-		classes y_pd = predict (network, x);
+		classes y_pd = predict (network, x[rand () % n]);
 		double error = network->error (y_pd, y, n);
 		printf ("Epoch %d: error=%f\n", i, error);
 	}
 }
 
 
-classes predict (Mlp *network, dataset x) {
-	return 0;
+classes predict (Mlp *network, double *x) {
+
+	/* Map x to the input layer's input */
+	network->layers[0].input = x;
+	
+	for (int i = 0; i < network->layers[0] = )
+	for (int j = 0; j < network->layers[0].n_output; ++j)
+		network->layers[0].output = 
+
+	for (int i = 1; i < network->n_layers; ++i) {
+		network->layers[i].input = 
+	}
 }
 
 /* Minimum square error function */
@@ -152,6 +163,17 @@ double mse (classes y_1, classes y_2, int n) {
 double *mse_grad (double *values, int n) {
 	double *result = malloc (sizeof (double) * n);
 	return result;
+}
+
+double sigmoid (double *values, int n) {
+	double h = 0;
+	for (int i = 0; i < n; ++i)
+		h += values[i];
+	return 1 / (1 + exp ((-1) * h));
+}
+
+double sigmoid_grad (double *values, int n) {
+	return sigmoid (values, n) * (1 - sigmoid (values, n));
 }
 
 /* Rectified Linear Unit function */
