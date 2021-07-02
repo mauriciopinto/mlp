@@ -159,6 +159,15 @@ double mse (classes y_1, classes y_2, int n) {
 }
 
 
+/* Cross entropy loss function y_1 = y_pred */
+double crossentropy (classes y_1, classes y_2, int n) {
+	 double sum = 0;
+    for (int i = 0; i < n; ++i){
+        sum -= (y_2[i]*log(y_1[i]) ) + ((1-y_2[i]) * log(1-y_1[i]));
+    }
+    return sum/n;
+}
+
 /* MSE Gradient */
 double *mse_grad (double *values, int n) {
 	double *result = malloc (sizeof (double) * n);
@@ -181,10 +190,29 @@ double relu (double value) {
 	return value < 0 ? 0 : value;
 }
 
-
 /* RELU Gradient */
 double relu_grad (double value) {
 	return 0;
+}
+
+/* Sigmoid activation function */
+double sigmoid (double value) {
+	return 1/(1+exp(-value));
+}
+
+/* Sigmoid Gradient */
+double sigmoid_grad (double value) {
+	return sigmoid(value)*(1-sigmoid(value));
+}
+
+/* Hyperbolic tangent activation function */
+double tanh (double value) {
+	return (2/(1+exp(-2*value))) - 1;
+}
+
+/* Hyperbolic tangent Gradient */
+double tanh_grad (double value) {
+	return tanh(value)*tanh(value);
 }
 
 
