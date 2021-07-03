@@ -4,17 +4,20 @@
 /* Create a layer that receives 'n_input' values and returns
  * 'n_output' values after wieghting and activating them
  * through the 'activate' method */
-Layer create_layer (int n_input, int n_output, int n_neurons,
-					activation_function *activate, activation_function *grad) {
+Layer create_layer (int n_input, int n_output, activation_function *activate, 
+					activation_function *grad) {
 	Layer layer;
 	layer.n_input = n_input;
 	layer.n_output = n_output;
 	
+	layer.input = malloc (sizeof (double) * n_input);
+	layer.output = malloc (sizeof (double) * n_output);
+
 	layer.weights = malloc (sizeof (double *) * n_input);
 	for (int i = 0; i < n_input; ++i) {
-		layer.weights[i] = malloc (sizeof (double) * n_neurons);
-		for (int j = 0; j < n_neurons; ++j)
-			layer.weights[i][j] = (double) ((rand () % 10) / 10);
+		layer.weights[i] = malloc (sizeof (double) * n_output);
+		for (int j = 0; j < n_output; ++j)
+			layer.weights[i][j] = (double) ((rand () % 10) * 0.1);
 	}
 
 	layer.sensitivities = malloc (sizeof (double) * n_input);
@@ -79,30 +82,39 @@ void backpropagation (Mlp *network, double learning_rate) {
 	/* Sensitivities of the error layer */
 	double *error_sensitivities = network->grad (prev_layer->output, prev_layer->n_output);
 
-
-	/* Calculate the sensitivities of the previous layer inputs
+	/* Calculate the sensitivities of the output layer inputs
 	 * with the formula: 
-	 * d(p[i]) = A'(p[i])*sum(w[i][j]*d(c[j]) for j in prev.n_neurons) */
+	 * d(p[i]) = A'(p[i])*sum(w[i][j]*d(c[j]) for j in prev.n_output) */
 	for (int i = 0; i < prev_layer->n_input; ++i) {
 		double sum = 0;
-		for (int j = 0; j < prev_layer->n_neurons; ++j) {
+		for (int j = 0; j < prev_layer->n_output; ++j) {
 			sum += prev_layer->weights[i][j] * error_sensitivities[j];
 		}
 		prev_layer->sensitivities[i] = prev_layer->grad (prev_layer->input[i]) * sum;
 	}
 
+	/* Calculate the weights of the output layer with the
+	 * formula:
+	 * w[i][j] = w[i][j]-learning_rate*d(w[i][j])
+	 * where d(w[i][j]) = A(p[i])*d(c[j]) */
+	for (int n = 0; n < prev_layer->n_input; ++n) {
+		for (int m = 0; m < prev_layer->n_output; ++m) {
+			double grad = prev_layer->activate (prev_layer->input[n]) * error_sensitivities[m];
+			prev_layer->weights[n][m] = prev_layer->weights[n][m] - learning_rate * grad;
+		}
+	}
 	
+	Layer *current_layer;
+
 	/* Repeat the procedure for all other layers */
 	for (int i = n_layers - 1; i > 0; --i) {
-		Layer *current_layer = &network->layers[i];
+		current_layer = &network->layers[i];
 		prev_layer = &network->layers[i - 1];
 
 		/* Calculate the sensitivities of the previous layer */
-		//prev_layer->sensitivities = network->prev_grad (prev_layer->input, current_layer->sensitivities,
-		//												prev_layer->grad);
 		for (int n = 0; n < prev_layer->n_input; ++n) {
 			double sum = 0;
-			for (int m = 0; m < prev_layer->n_neurons; ++m) {
+			for (int m = 0; m < prev_layer->n_output; ++m) {
 				sum += prev_layer->weights[n][m] * current_layer->sensitivities[m];
 			}
 			prev_layer->sensitivities[n] = prev_layer->grad (prev_layer->input[n]) * sum;
@@ -114,7 +126,7 @@ void backpropagation (Mlp *network, double learning_rate) {
 		 * w[i][j] = w[i][j]-learning_rate*d(w[i][j])
 		 * where d(w[i][j]) = A(p[i])*d(c[j]) */
 		for (int n = 0; n < prev_layer->n_input; ++n) {
-			for (int m = 0; m < prev_layer->n_neurons; ++m) {
+			for (int m = 0; m < prev_layer->n_output; ++m) {
 				double grad = prev_layer->activate (prev_layer->input[n])*current_layer->sensitivities[m];
 				prev_layer->weights[n][m] = prev_layer->weights[n][m] - learning_rate * grad;
 			}
@@ -127,27 +139,49 @@ void backpropagation (Mlp *network, double learning_rate) {
  * times.  */
 void train (Mlp *network, int epochs, double learning_rate, 
 				dataset x, classes y, int n) {
+	double *probabilities = predict (network, x[rand () % n]);
+
 	for (int i = 0; i < epochs; ++i) {
 		backpropagation (network, learning_rate);
-		classes y_pd = predict (network, x[rand () % n]);
+		probabilities = predict (network, x[rand () % n]);
+		classes y_pd = get_classes (probabilities, 1);
 		double error = network->error (y_pd, y, n);
 		printf ("Epoch %d: error=%f\n", i, error);
 	}
 }
 
-
-classes predict (Mlp *network, double *x) {
-
-	/* Map x to the input layer's input */
-	network->layers[0].input = x;
+/* Predicts the probabilities of the output given
+ * a data element 'x', using the model 'network'. */
+double *predict (Mlp *network, double *x) {
+	Layer *current_layer = &network->layers[0];
 	
-	for (int i = 0; i < network->layers[0] = )
-	for (int j = 0; j < network->layers[0].n_output; ++j)
-		network->layers[0].output = 
-
-	for (int i = 1; i < network->n_layers; ++i) {
-		network->layers[i].input = 
+	/* Map x to the input layer's input */
+	current_layer->input = x;
+	
+	/* Generate the output for the first layer */
+	for (int i = 0; i < current_layer->n_output; ++i) {
+		double sum = 0;
+		for (int j = 0; j < current_layer->n_input; ++j)
+			sum += current_layer->activate (current_layer->input[j]) * current_layer->weights[j][i];
+		current_layer->output[i] = sum;
 	}
+	
+	/* Repeat the same procedure for all other layers. */
+	for (int i = 1; i < network->n_layers; ++i) {
+		current_layer = &network->layers[i];
+		current_layer->input = network->layers[i-1].output;
+
+		for (int i = 0; i < current_layer->n_output; ++i) {
+			double sum = 0;
+			for (int j = 0; j < current_layer->n_input; ++j)
+				sum += current_layer->activate (current_layer->input[j]) * current_layer->weights[j][i];
+			current_layer->output[i] = sum;
+		}
+	}
+
+	/* The output of the last layer represents the 
+	 * probabilities of the classifications of x */
+	return current_layer->output;
 }
 
 /* Minimum square error function */
@@ -172,17 +206,6 @@ double crossentropy (classes y_1, classes y_2, int n) {
 double *mse_grad (double *values, int n) {
 	double *result = malloc (sizeof (double) * n);
 	return result;
-}
-
-double sigmoid (double *values, int n) {
-	double h = 0;
-	for (int i = 0; i < n; ++i)
-		h += values[i];
-	return 1 / (1 + exp ((-1) * h));
-}
-
-double sigmoid_grad (double *values, int n) {
-	return sigmoid (values, n) * (1 - sigmoid (values, n));
 }
 
 /* Rectified Linear Unit function */
@@ -217,6 +240,11 @@ double tanh_grad (double value) {
 
 
 /* Auxiliary Functions */
+classes get_classes (double *probabilities, int n) {
+	classes y_pd = malloc (sizeof (double) * n);	
+	return y_pd;
+}
+
 void print_dataset (char *name, dataset data, int dims, int n) {
 	printf ("================\n");
 	printf ("%s\n", name);

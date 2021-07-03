@@ -11,7 +11,6 @@ typedef double *gradient_function (double *, int);
 typedef struct layer {
 	int n_input;
 	int n_output;
-	int n_neurons;
 	double *input;
 	double *output;
 	double **weights;
@@ -29,7 +28,7 @@ typedef struct mlp {
 } Mlp;
 
 /*Main functions*/
-Layer create_layer (int, int, int, activation_function *, activation_function *);
+Layer create_layer (int, int, activation_function *, activation_function *);
 
 Mlp create_mlp (int, Layer[], error_function *, gradient_function *);
 
@@ -41,7 +40,7 @@ void backpropagation (Mlp *, double);
 
 void train (Mlp *, int, double, dataset, classes, int);
 
-classes predict (Mlp *, dataset);
+double *predict (Mlp *, double *);
 
 double mse (classes, classes, int);
 
@@ -64,6 +63,8 @@ double tanh_grad (double);
 double **calculate_weights (double **);
 
 /* Auxiliary Functions */
+classes get_classes (double *, int);
+
 void print_dataset (char *, dataset, int, int);
 
 void print_classes (char *, classes, int);
