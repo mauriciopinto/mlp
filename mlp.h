@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <cstring>
 
 typedef double **dataset;
 typedef int *classes;
 typedef double activation_function(double);
-typedef double error_function (classes, classes, int);
-typedef double *gradient_function (double *, int);
+typedef double error_function (dataset, dataset, int);
+typedef double gradient_function (double, double);
 
 typedef struct layer {
 	int n_input;
@@ -36,17 +37,19 @@ dataset create_dataset (int, int, int, int);
 
 classes create_classes (int, int, int);
 
-void backpropagation (Mlp *, double);
+void backpropagation (Mlp *, double, double *, int);
 
-void train (Mlp *, int, double, dataset, classes, int);
+void train (Mlp *, int, double, dataset, dataset, int);
 
 double *predict (Mlp *, double *);
 
 double mse (classes, classes, int);
 
-double crossentropy (classes, classes, int);
+double crossentropy (dataset, dataset, int);
 
-double *mse_grad (double *, int);
+double crossentropy_grad (double, double);
+
+double mse_grad (double, int, int);
 
 double relu (double);
 
@@ -63,8 +66,6 @@ double tanh_grad (double);
 double **calculate_weights (double **);
 
 /* Auxiliary Functions */
-classes get_classes (double *, int);
-
 void print_dataset (char *, dataset, int, int);
 
 void print_classes (char *, classes, int);

@@ -1,7 +1,7 @@
-CC=gcc
+CC=g++
 CFLAGS=-g -lm
-ALLOBJ=main.o mlp.o
-DEPS=mlp.h
+ALLOBJ=main.o mlp.o parser.o
+DEPS=mlp.h parser.h
 ALLX=mlp
 OUT=build
 
@@ -13,10 +13,10 @@ all:
 	make $(ALLX)
 	make create_build
 
-%.o: %.cpp $(DEPS)
+%.o: %.cxx $(DEPS)
 	$(CC) -c -o $@ %< $(CFLAGS) 
 
-mlp: main.o mlp.o
+mlp: main.o mlp.o parser.o
 	$(CC) -o $@ $^ $(CFLAGS)
 
 create_build:

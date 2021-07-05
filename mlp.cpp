@@ -1,5 +1,4 @@
 #include "mlp.h"
-#include <math.h>
 
 /* Create a layer that receives 'n_input' values and returns
  * 'n_output' values after wieghting and activating them
@@ -10,17 +9,17 @@ Layer create_layer (int n_input, int n_output, activation_function *activate,
 	layer.n_input = n_input;
 	layer.n_output = n_output;
 	
-	layer.input = malloc (sizeof (double) * n_input);
-	layer.output = malloc (sizeof (double) * n_output);
+	layer.input = (double *) malloc (sizeof (double) * n_input);
+	layer.output = (double *) malloc (sizeof (double) * n_output);
 
-	layer.weights = malloc (sizeof (double *) * n_input);
+	layer.weights = (double **) malloc (sizeof (double *) * n_input);
 	for (int i = 0; i < n_input; ++i) {
-		layer.weights[i] = malloc (sizeof (double) * n_output);
+		layer.weights[i] = (double *) malloc (sizeof (double) * n_output);
 		for (int j = 0; j < n_output; ++j)
 			layer.weights[i][j] = (double) ((rand () % 10) * 0.1);
 	}
 
-	layer.sensitivities = malloc (sizeof (double) * n_input);
+	layer.sensitivities = (double *) malloc (sizeof (double) * n_input);
 	layer.activate = activate;
 	layer.grad = grad;
 	return layer;
@@ -34,7 +33,7 @@ Mlp create_mlp (int n_layers, Layer layers[], error_function *error, gradient_fu
 	Mlp mlp;
 	mlp.n_layers = n_layers;
 	
-	mlp.layers = malloc (sizeof (Layer) * n_layers);
+	mlp.layers = (Layer *) malloc (sizeof (Layer) * n_layers);
 	for (int i = 0; i < n_layers; ++i)
 		mlp.layers[i] = layers[i];
 
@@ -49,9 +48,9 @@ Mlp create_mlp (int n_layers, Layer layers[], error_function *error, gradient_fu
  * creates datasets with integer values between 'low' and 
  * 'low + high' */
 dataset create_dataset (int low, int high, int dims, int n) {
-	dataset new_dataset = malloc (sizeof (double *) * n);
+	dataset new_dataset = (dataset) malloc (sizeof (double *) * n);
 	for (int i = 0; i < n; ++i) {
-		new_dataset[i] = malloc (sizeof (double) * dims);
+		new_dataset[i] = (double *) malloc (sizeof (double) * dims);
 		for (int j = 0; j < dims; ++j)
 			new_dataset[i][j] = rand () % high + low;
 	}
@@ -64,7 +63,7 @@ dataset create_dataset (int low, int high, int dims, int n) {
  * classifies an object. This function returns a random array of 
  * 'n' classes with values between 'low' and 'low + high'.*/
 classes create_classes (int low, int high, int n) {
-	classes new_classes = malloc (sizeof (int) * n);
+	classes new_classes = (classes) malloc (sizeof (int) * n);
 	for (int i = 0; i < n; ++i) {
 		new_classes[i] = rand() % high + low;
 	}
@@ -75,12 +74,16 @@ classes create_classes (int low, int high, int n) {
 /* Calculates the values of the weights of each layer in
  * 'network' by back-propagating them starting from the 
  * output layer. */
-void backpropagation (Mlp *network, double learning_rate) {
+void backpropagation (Mlp *network, double learning_rate,
+					  double *y_pd, double *y) {
 	int n_layers = network->n_layers;
 	Layer *prev_layer = &network->layers[n_layers - 1];
 	
 	/* Sensitivities of the error layer */
-	double *error_sensitivities = network->grad (prev_layer->output, prev_layer->n_output);
+	
+	double *error_sensitivities = (double *) malloc (sizeof (double) * prev_layer->n_output);
+	for (int i = 0; i < prev_layer->n_output; ++i)
+		error_sensitivities[i] = network->grad (prev_layer->output[i], y[i]);
 
 	/* Calculate the sensitivities of the output layer inputs
 	 * with the formula: 
@@ -121,7 +124,7 @@ void backpropagation (Mlp *network, double learning_rate) {
 		}
 
 
-		/* Calculate the weights of the previous layer with the
+		/* Calculate the weights of the previous layer with thepredicted[i] = probabilities
 		 * formula:
 		 * w[i][j] = w[i][j]-learning_rate*d(w[i][j])
 		 * where d(w[i][j]) = A(p[i])*d(c[j]) */
@@ -138,14 +141,23 @@ void backpropagation (Mlp *network, double learning_rate) {
 /* Trains the model 'network' by backpropagating it 'epochs'
  * times.  */
 void train (Mlp *network, int epochs, double learning_rate, 
-				dataset x, classes y, int n) {
-	double *probabilities = predict (network, x[rand () % n]);
+				dataset x, dataset y, int n) {
+	int index = rand () % n;
+	double *probabilities = predict (network, x[index]);
+
+	int train = ceil (n * 70 / 100);
+	dataset predicted = (dataset) malloc (sizeof (double) * train);
+	dataset real = (dataset) malloc (sizeof (double) * train);
 
 	for (int i = 0; i < epochs; ++i) {
-		backpropagation (network, learning_rate);
-		probabilities = predict (network, x[rand () % n]);
-		classes y_pd = get_classes (probabilities, 1);
-		double error = network->error (y_pd, y, n);
+		for (int j = 0; j < train; ++j) {
+			index = rand () % train;
+			backpropagation (network, learning_rate, probabilities, y[index]);
+			probabilities = predict (network, x[index]);
+			memcpy (predicted[i], probabilities, sizeof (double) * 2);
+			real[i] = y[index];
+		}
+		double error = network->error (predicted, y, train);
 		printf ("Epoch %d: error=%f\n", i, error);
 	}
 }
@@ -192,20 +204,46 @@ double mse (classes y_1, classes y_2, int n) {
 	return sqrt (sum);
 }
 
+/* Softmax */
+double *softmax(double *y_1, int n){
+	printf ("%f, %f\n", y_1[0], y_1[1]);
+    double norm =10e-8;
+    for (int j = 0; j < n; ++j) {
+        norm+=exp(y_1[j]);
+    }
+    double ans[n];
+    for (int k = 0; k < n; ++k) {
+        double tmp= (exp(y_1[k]))/(norm);
+        ans[k] = tmp;
+    }
+    return ans;
+}
 
 /* Cross entropy loss function y_1 = y_pred */
-double crossentropy (classes y_1, classes y_2, int n) {
-	 double sum = 0;
-    for (int i = 0; i < n; ++i){
-        sum -= (y_2[i]*log(y_1[i]) ) + ((1-y_2[i]) * log(1-y_1[i]));
+double crossentropy (dataset y_1, dataset y_2, int n) {
+    double **probs = (double **) malloc (sizeof (double *) * n);
+
+    for (int i = 0; i < n; ++i) {
+        probs[i] = softmax(y_1[i],2);
     }
-    return sum/n;
+	printf ("softmax\n");
+    double sum[2];
+    for (int j = 0; j < 2; ++j) {
+		for (int i = 0; i < n; ++i)
+        	sum[j] -= (y_2[i][j]*log(probs[i][j]) ) + ((1-y_2[i][j]) * log(1-probs[i][j]));
+    }
+    return sum[0] + sum[1];
+}
+
+/* Cross entropy gradient */
+double crossentropy_grad (double y_1, double y_2) {
+	return y_2 - y_1;
 }
 
 /* MSE Gradient */
-double *mse_grad (double *values, int n) {
-	double *result = malloc (sizeof (double) * n);
-	return result;
+double mse_grad (double value, int y_pd, int y) {
+	double sensitivity = (y - y_pd) * (-value);
+	return sensitivity;
 }
 
 /* Rectified Linear Unit function */
@@ -240,10 +278,6 @@ double tanh_grad (double value) {
 
 
 /* Auxiliary Functions */
-classes get_classes (double *probabilities, int n) {
-	classes y_pd = malloc (sizeof (double) * n);	
-	return y_pd;
-}
 
 void print_dataset (char *name, dataset data, int dims, int n) {
 	printf ("================\n");
