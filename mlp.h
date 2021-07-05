@@ -41,15 +41,19 @@ void backpropagation (Mlp *, double, double *, int);
 
 void train (Mlp *, int, double, dataset, dataset, int);
 
+void test (Mlp *, dataset, dataset, int);
+
 double *predict (Mlp *, double *);
 
-double mse (classes, classes, int);
+double mse (dataset, dataset, int);
+
+double *softmax(double *, int);
 
 double crossentropy (dataset, dataset, int);
 
 double crossentropy_grad (double, double);
 
-double mse_grad (double, int, int);
+double mse_grad (double, double);
 
 double relu (double);
 
@@ -66,6 +70,10 @@ double tanh_grad (double);
 double **calculate_weights (double **);
 
 /* Auxiliary Functions */
+int get_classes (double *);
+
+float accuracy(dataset, dataset, int);
+
 void print_dataset (char *, dataset, int, int);
 
 void print_classes (char *, classes, int);

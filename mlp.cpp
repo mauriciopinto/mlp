@@ -13,7 +13,7 @@ Layer create_layer (int n_input, int n_output, activation_function *activate,
 	layer.output = (double *) malloc (sizeof (double) * n_output);
 
 	layer.weights = (double **) malloc (sizeof (double *) * n_input);
-	for (int i = 0; i < n_input; ++i) {
+	for (int i = 0; i < n_input + 1; ++i) {
 		layer.weights[i] = (double *) malloc (sizeof (double) * n_output);
 		for (int j = 0; j < n_output; ++j)
 			layer.weights[i][j] = (double) ((rand () % 10) * 0.1);
@@ -82,8 +82,10 @@ void backpropagation (Mlp *network, double learning_rate,
 	/* Sensitivities of the error layer */
 	
 	double *error_sensitivities = (double *) malloc (sizeof (double) * prev_layer->n_output);
-	for (int i = 0; i < prev_layer->n_output; ++i)
+	for (int i = 0; i < prev_layer->n_output; ++i) {
 		error_sensitivities[i] = network->grad (prev_layer->output[i], y[i]);
+		//printf ("error sensitivity %d: %f\n", i, error_sensitivities[i]);
+	}
 
 	/* Calculate the sensitivities of the output layer inputs
 	 * with the formula: 
@@ -135,6 +137,7 @@ void backpropagation (Mlp *network, double learning_rate,
 			}
 		}
 	}
+	free (error_sensitivities);
 }
 
 
@@ -145,21 +148,47 @@ void train (Mlp *network, int epochs, double learning_rate,
 	int index = rand () % n;
 	double *probabilities = predict (network, x[index]);
 
-	int train = ceil (n * 70 / 100);
-	dataset predicted = (dataset) malloc (sizeof (double) * train);
-	dataset real = (dataset) malloc (sizeof (double) * train);
+	dataset predicted = (dataset) malloc (sizeof (double) * n);
+	for (int i = 0; i < n; ++i)
+		predicted[i] = (double *) malloc (sizeof (double) *2);
+	dataset real = (dataset) malloc (sizeof (double) * n);
 
 	for (int i = 0; i < epochs; ++i) {
-		for (int j = 0; j < train; ++j) {
-			index = rand () % train;
+		for (int j = 0; j < n; ++j) {
 			backpropagation (network, learning_rate, probabilities, y[index]);
+			index = j;
 			probabilities = predict (network, x[index]);
-			memcpy (predicted[i], probabilities, sizeof (double) * 2);
-			real[i] = y[index];
+			predicted[j][0] = probabilities[0];
+			predicted[j][1] = probabilities[1];
+			real[j] = y[index];
 		}
-		double error = network->error (predicted, y, train);
-		printf ("Epoch %d: error=%f\n", i, error);
+		double error = network->error (predicted, y, n);
+		double acc = accuracy (predicted, y, n);
+		if (i % 10 == 0)
+			printf ("Epoch %d: error=%f | accuracy=%f\n", i, error, acc);
 	}
+	free (predicted);
+	free (real);
+}
+
+void test (Mlp *network, dataset x, dataset y, int n) {
+	double *probabilities;
+	dataset predicted = (dataset) malloc (sizeof (double) * n);
+	for (int i = 0; i < n; ++i)
+		predicted[i] = (double *) malloc (sizeof (double) *2);
+	dataset real = (dataset) malloc (sizeof (double) * n);
+
+	for (int i = 0; i < n; ++i) {
+		probabilities = predict (network, x[i]);
+		predicted[i][0] = probabilities[0];
+		predicted[i][1] = probabilities[1];
+		real[i] = y[i];
+	}
+	double acc = accuracy (predicted, real, n);
+	printf ("accuracy=%f", acc);
+
+	free (predicted);
+	free (real);
 }
 
 /* Predicts the probabilities of the output given
@@ -191,27 +220,28 @@ double *predict (Mlp *network, double *x) {
 		}
 	}
 
+	current_layer->output = softmax (current_layer->output, 2);
+
 	/* The output of the last layer represents the 
 	 * probabilities of the classifications of x */
 	return current_layer->output;
 }
 
 /* Minimum square error function */
-double mse (classes y_1, classes y_2, int n) {
+double mse (dataset y_1, dataset y_2, int n) {
 	double sum = 0;
 	for (int i = 0; i < n; ++i)
-		sum += pow (y_2[i] - y_1[i], 2);
+		sum += pow (y_2[i][0] - y_1[i][0], 1) + pow (y_2[i][1] - y_1[i][1], 1);
 	return sqrt (sum);
 }
 
 /* Softmax */
 double *softmax(double *y_1, int n){
-	printf ("%f, %f\n", y_1[0], y_1[1]);
     double norm =10e-8;
     for (int j = 0; j < n; ++j) {
         norm+=exp(y_1[j]);
     }
-    double ans[n];
+    double *ans = (double *) malloc (sizeof (double) * n);
     for (int k = 0; k < n; ++k) {
         double tmp= (exp(y_1[k]))/(norm);
         ans[k] = tmp;
@@ -221,28 +251,24 @@ double *softmax(double *y_1, int n){
 
 /* Cross entropy loss function y_1 = y_pred */
 double crossentropy (dataset y_1, dataset y_2, int n) {
-    double **probs = (double **) malloc (sizeof (double *) * n);
+	//print_dataset ("y_1", probs, 2, n);
 
-    for (int i = 0; i < n; ++i) {
-        probs[i] = softmax(y_1[i],2);
-    }
-	printf ("softmax\n");
     double sum[2];
     for (int j = 0; j < 2; ++j) {
 		for (int i = 0; i < n; ++i)
-        	sum[j] -= (y_2[i][j]*log(probs[i][j]) ) + ((1-y_2[i][j]) * log(1-probs[i][j]));
+        	sum[j] -= (y_2[i][j]*log(y_1[i][j]) ) + ((1-y_2[i][j]) * log(1-y_1[i][j]));
     }
-    return sum[0] + sum[1];
+    return sum[1];
 }
 
 /* Cross entropy gradient */
 double crossentropy_grad (double y_1, double y_2) {
-	return y_2 - y_1;
+	return -(y_2/y_1) + (1 - y_2) / (1 - y_1);
 }
 
 /* MSE Gradient */
-double mse_grad (double value, int y_pd, int y) {
-	double sensitivity = (y - y_pd) * (-value);
+double mse_grad (double y_pd, double y) {
+	double sensitivity = (y - y_pd);
 	return sensitivity;
 }
 
@@ -253,7 +279,7 @@ double relu (double value) {
 
 /* RELU Gradient */
 double relu_grad (double value) {
-	return 0;
+	return value < 0 ? 0 : 1;
 }
 
 /* Sigmoid activation function */
@@ -278,6 +304,20 @@ double tanh_grad (double value) {
 
 
 /* Auxiliary Functions */
+int get_classes (double *probabilities) {
+    return (probabilities[0]>probabilities[1]) ? 0 : 1;
+}
+
+float accuracy(dataset y_1, dataset y_2, int n){
+    float correct=0;
+    for (int j = 0; j < n; ++j) {
+        if(get_classes(y_1[j])==get_classes(y_2[j])){
+            correct++;
+        }
+    }
+	//printf ("%f\n", correct);
+    return ((float) (correct/n))*100;
+} 
 
 void print_dataset (char *name, dataset data, int dims, int n) {
 	printf ("================\n");

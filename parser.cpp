@@ -32,13 +32,15 @@ double **parse_x (char *path){
 
     double **dataset = (double **) malloc (sizeof (double *) * datafame.size());
     for (int i = 0; i < datafame.size (); ++i)
-        dataset[i] = (double *) malloc (sizeof (double *) * datafame[i].size());
+        dataset[i] = (double *) malloc (sizeof (double *) * datafame[i].size() + 1);
 
     for (int i = 0; i < datafame.size (); ++i) {
-        for (int j = 0; j < datafame[i].size (); ++j) {
-            dataset[i][j] = datafame[i][j];
+        for (int j = 0; j < datafame[i].size () + 1; ++j) {
+            if (j == 0)
+                dataset[i][j] = 1;
+            else 
+                dataset[i][j] = datafame[i][j-1];
         }
-        cout << endl;
     }
 
     return dataset;

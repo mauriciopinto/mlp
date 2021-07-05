@@ -14,7 +14,7 @@ all:
 	make create_build
 
 %.o: %.cxx $(DEPS)
-	$(CC) -c -o $@ %< $(CFLAGS) 
+	$(CC) -c -o $@ %< $(CFLAGS)
 
 mlp: main.o mlp.o parser.o
 	$(CC) -o $@ $^ $(CFLAGS)
